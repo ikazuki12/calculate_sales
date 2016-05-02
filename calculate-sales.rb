@@ -55,7 +55,7 @@ def calculating!(sales_files, hash, name, number)
       puts("#{file}の#{name}コードが不正です")
       return nil
     else
-      hash[sales_table[:header][number]].price =+ sales_table[:header][2].to_i
+      hash[sales_table[:header][number]].price += sales_table[:header][2].to_i
     end
     if hash[sales_table[:header][number]].price.to_s.length > 10
       puts("合計金額が10桁を超えました")
