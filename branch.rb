@@ -6,4 +6,8 @@ class Branch
     self.name = name
     self.price = price
   end
+
+  def to_csv
+    "#{code},#{name},#{price}\n"
+  end
 end
