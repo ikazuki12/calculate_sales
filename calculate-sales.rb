@@ -11,12 +11,21 @@ def main
   unless commodities = lode_file("commodity.lst", "^\\w{8}$", Commodity)
     return puts("商品定義ファイルのフォーマットが不正です")
   end
-  Dir.glob ARGV[0] + "/\d{8}.rcd"
-  Dir.chdir ARGV[0] + "/"
+  
   sales_files = Dir.glob "*.rcd"
-  return puts("売上ファイル名が連番になっていません") if sequence_check?(sales_files)
-  return unless branches = calculating!(sales_files, branches, "支店", 0)
-  return unless commodities = calculating!(sales_files, commodities, "商品", 1)
+  return puts("売上ファイル名が連番になっていません") if sales_files.size != sales_files.last.to_i
+  sales_files.each do |file|
+    sales_table = CSV.table(ARGV[0] + "/" + file, {:headers => ["header"], converters: :date})
+    return puts("#{file}のフォーマットが不正です") if sales_table.size != 3
+    unless calculating!(sales_table[:header][0], sales_table, branches)
+      return puts("#{file}の支店コードが不正です")
+    end
+    return puts("合計金額が10桁を超えました") unless exceed_ten?(branches, sales_table[:header][0])
+    unless calculating!(sales_table[:header][1], sales_table, commodities)
+      return puts("#{file}の商品コードが不正です")
+    end
+    return puts("合計金額が10桁を超えました") unless exceed_ten?(commodities, sales_table[:header][1])
+  end
   output_file("branch.out", branches)
   output_file("commodity.out", commodities)
   return
@@ -37,32 +46,13 @@ def lode_file(file_name, regex, klass)
   hash
 end
 
-def sequence_check?(sales_files)
-  sales_files.each_with_index do |file, i|
-     return true if file.to_i % ( i + 1 ) != 0
-  end
-  false
+def calculating!(sales_table_code, sales_table, hash)
+  return nil if hash[sales_table_code].nil?
+  hash[sales_table_code].price += sales_table[:header][2].to_i
 end
 
-def calculating!(sales_files, hash, name, number)
-  sales_files.each do |file|
-    sales_table = CSV.table(ARGV[0] + "/" + file, {:headers => ["header"], converters: :date})
-    if sales_table.size != 3
-      puts("#{file}のフォーマットが不正です")
-      return nil
-    end
-    if hash[sales_table[:header][number]].nil?
-      puts("#{file}の#{name}コードが不正です")
-      return nil
-    else
-      hash[sales_table[:header][number]].price += sales_table[:header][2].to_i
-    end
-    if hash[sales_table[:header][number]].price.to_s.length > 10
-      puts("合計金額が10桁を超えました")
-      return nil
-    end
-  end
-  hash
+def exceed_ten?(hash, sales_table_code)
+  not hash[sales_table_code].price.to_s.length > 10
 end
 
 def output_file(file_name, hash)
